@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+from phrasenoia import PhraseNoia
+import argparse
+
+parser = argparse.ArgumentParser(description="Generate a strong, secure pass phrase",
+    usage="%(prog)s number-of-words")
+parser.add_argument(
+    '-n', '-numwords',
+    dest='numwords',
+    metavar='numwords',
+    type=int,
+    nargs='?',
+    default=PhraseNoia.default_numwords,
+    help='number of words in the pass phrase [default: %(default)i]')
+parser.add_argument(
+    '-w', '-wordlist',
+    dest='wordlist',
+    metavar='wordlist',
+    type=str,
+    nargs='?',
+    default=PhraseNoia._word_list_file,
+    help='file: source of words separated by newline [default: %(default)s]')
+parser.add_argument(
+    '-s', '--entropy-source',
+    dest='entropy_source',
+    metavar='entropy_source',
+    type=str,
+    nargs='?',
+    default=PhraseNoia.entropy_file,
+    help='file: source of entropy [default: %(default)s]')
+parser.add_argument(
+    '-r', '--random-replacements',
+    dest='numreplacements',
+    metavar='numreplacements',
+    type=int,
+    nargs='?',
+    default=PhraseNoia.random_replace,
+    help='number of chars randomly replaced after phrase is created (increases security at the expense of memorization) [default: %(default)i]')
+args = parser.parse_args()
+
+if not args.numwords or not args.wordlist:
+    parser.print_help()
+    sys.exit(7)
+
+phrasegen                 = PhraseNoia(list_file=args.wordlist)
+PhraseNoia.random_replace = args.numreplacements
+print(phrasegen.gen(args.numwords))
