@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 __license__= """
     Copyright (c) 2013 Chris Hiestand <https://github.com/chrishiestand>
@@ -20,7 +20,6 @@ import os
 import sys
 import struct
 import random
-import syslog
 
 
 #You're not paranoid if they really are coming to get you
@@ -58,20 +57,8 @@ class PhraseNoia:
             entropy_count = int(f.read().strip())
             f.close()
             if entropy_count < 500:
-                __class__.output('Warning: low system entropy detected. This may take a while.\n' \
+                sys.stderr.write('Warning: low system entropy detected. This may take a while.\n' \
                     'Consider increasing entropy or using urandom instead')
-
-
-    @staticmethod
-    def output(text, sep=' ', end='\n', file=sys.stdout):
-        if __name__ == "__main__":
-            print(text, sep=sep, end=end, file=file)
-        else:
-            syslog.openlog(__class__.__name__)
-            if (sys.platform == 'darwin'):
-                syslog.syslog(syslog.LOG_ALERT, text)
-            else:
-                syslog.syslog(text)
 
 
     def gen(self, numwords):
@@ -138,7 +125,7 @@ def main():
 
     phrasegen                 = PhraseNoia(list_file=args.wordlist)
     PhraseNoia.random_replace = args.numreplacements
-    PhraseNoia.output(phrasegen.gen(args.numwords))
+    print(phrasegen.gen(args.numwords))
     return 0
 
 
