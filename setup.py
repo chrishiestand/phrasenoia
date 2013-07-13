@@ -35,7 +35,7 @@ def read_file(file_name):
 setup(name='phrasenoia',
       version          = VERSION,
       description      = DESC,
-      long_description = read_file('README.md'),
+      long_description = read_file('README'),
       author           = AUTHOR,
       author_email     = 'chrishiestand@gmail.com',
       url              = URL,
