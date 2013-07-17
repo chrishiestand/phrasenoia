@@ -37,12 +37,20 @@ parser.add_argument(
     nargs='?',
     default=PhraseNoia.random_replace,
     help='number of chars randomly replaced after phrase is created (increases security at the expense of memorization) [default: %(default)i]')
+parser.add_argument(
+    '-k', '--skip-entropy-check',
+    dest    = 'checkentropy',
+    action  = 'store_false',
+    default = PhraseNoia.check_entropy,
+    help    = 'skip entropy test on Linux systems [default: %(default)s]')
 args = parser.parse_args()
 
 if not args.numwords or not args.wordlist:
     parser.print_help()
     sys.exit(7)
 
-phrasegen                 = PhraseNoia(list_file=args.wordlist)
-PhraseNoia.random_replace = args.numreplacements
+phrasegen                = PhraseNoia(list_file=args.wordlist, entropy_source=args.entropy_source)
+phrasegen.random_replace = args.numreplacements
+phrasegen.check_entropy  = args.checkentropy
+
 print(phrasegen.gen(args.numwords))

@@ -25,23 +25,26 @@ import random
 #You're not paranoid if they really are coming to get you
 class PhraseNoia:
 
-    _bytes_needed       = None
-    _entropy_count_file = '/proc/sys/kernel/random/entropy_avail'
-    _word_list_file     = sys.prefix + "/wordlists/diceware.txt"
-    default_numwords    = 5
-    random_replace      = 0
-    entropy_file        = "/dev/random"
-    replacement_chars   = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' \
-                          '0123456789,./;\'[]\\`-=<>?:"}{|~!@#$%^&*()_+ '
+    _bytes_needed         = None
+    _entropy_count_file   = '/proc/sys/kernel/random/entropy_avail'
+    _word_list_file       = sys.prefix + "/wordlists/diceware.txt"
+    _default_entropy_file = '/dev/random'
+    check_entropy         = True
+    default_numwords      = 5
+    random_replace        = 0
+    entropy_file          = _default_entropy_file
+    replacement_chars     = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' \
+                            '0123456789,./;\'[]\\`-=<>?:"}{|~!@#$%^&*()_+ '
 
 
     def __init__(self, list_file=_word_list_file, entropy_source=entropy_file):
         self._set_list(list_file)
-        self._entropy_source = open(entropy_source, "rb")
+        self.entropy_file = entropy_source
+        self._entropy_source = open(self.entropy_file, 'rb')
 
 
     def _set_list(self, listfile):
-        self._word_list_file = open(listfile, "r")
+        self._word_list_file = open(listfile, 'r')
         self.wordlist        = list(self._word_list_file)
         self._bytes_needed   = (len(self.wordlist).bit_length() + 7) // 8 #round up to bytes
 
@@ -51,21 +54,31 @@ class PhraseNoia:
 
 
     def _warn_low_entropy(self):
+
+        if not self.check_entropy:
+            return
+
+        #Do not warn about user-specified entropy sources
+        if self.entropy_file != self._default_entropy_file:
+            return
+
         if self._entropy_source.name == '/dev/random' and sys.platform.startswith('linux') and \
                 os.path.exists('/proc/sys/kernel/random/entropy_avail'):
             f = open(self._entropy_count_file, 'r')
             entropy_count = int(f.read().strip())
             f.close()
             if entropy_count < 500:
-                sys.stderr.write('Warning: low system entropy detected. This may take a while.\n' \
-                    'Consider increasing entropy or using urandom instead')
+                sys.stderr.write('Warning: low system entropy detected. If you want /dev/random, increase entropy or skip entropy check. '\
+                                  'Switching to /dev/urandom\n\n')
+                self._entropy_source.close()
+                self._entropy_source = open('/dev/urandom', 'rb')
 
 
     def gen(self, numwords):
         self._warn_low_entropy()
         ids = []
         while len(ids) < numwords:
-            tup = struct.unpack("H", self._random_bytes())
+            tup = struct.unpack('H', self._random_bytes())
             word_id = tup[0]
             #Avoid techniques which result in non-uniform distribution
             #Instead, we skip values outside of the range we want
@@ -87,44 +100,51 @@ def main():
         usage="%(prog)s number-of-words")
     parser.add_argument(
         '-n', '-numwords',
-        dest='numwords',
-        metavar='numwords',
-        type=int,
-        nargs='?',
-        default=PhraseNoia.default_numwords,
-        help='number of words in the pass phrase [default: %(default)i]')
+        dest    = 'numwords',
+        metavar = 'numwords',
+        type    = int,
+        nargs   = '?',
+        default = PhraseNoia.default_numwords,
+        help    = 'number of words in the pass phrase [default: %(default)s]')
     parser.add_argument(
         '-w', '-wordlist',
-        dest='wordlist',
-        metavar='wordlist',
-        type=str,
-        nargs='?',
-        default='diceware.txt',
-        help='file: source of words separated by newline [default: %(default)s]')
+        dest    = 'wordlist',
+        metavar = 'wordlist',
+        type    = str,
+        nargs   = '?',
+        default = 'diceware.txt',
+        help    = 'file: source of words separated by newline [default: %(default)s]')
     parser.add_argument(
         '-s', '--entropy-source',
-        dest='entropy_source',
-        metavar='entropy_source',
-        type=str,
-        nargs='?',
-        default=PhraseNoia.entropy_file,
-        help='file: source of entropy [default: %(default)s]')
+        dest    = 'entropy_source',
+        metavar = 'entropy_source',
+        type    = str,
+        nargs   = '?',
+        default = PhraseNoia.entropy_file,
+        help    = 'file: source of entropy [default: %(default)s]')
     parser.add_argument(
         '-r', '--random-replacements',
-        dest='numreplacements',
-        metavar='numreplacements',
-        type=int,
-        nargs='?',
-        default=PhraseNoia.random_replace,
-        help='number of chars randomly replaced after phrase is created (increases security at the expense of memorization) [default: %(default)i]')
+        dest    = 'numreplacements',
+        metavar = 'numreplacements',
+        type    = int,
+        nargs   = '?',
+        default = PhraseNoia.random_replace,
+        help    = 'number of chars randomly replaced after phrase is created (increases security at the expense of memorization) [default: %(default)s]')
+    parser.add_argument(
+        '-k', '--skip-entropy-check',
+        dest    = 'checkentropy',
+        action  = 'store_false',
+        default = PhraseNoia.check_entropy,
+        help    = 'skip entropy test on Linux systems [default: %(default)s]')
     args = parser.parse_args()
 
     if not args.numwords or not args.wordlist:
         parser.print_help()
         sys.exit(7)
 
-    phrasegen                 = PhraseNoia(list_file=args.wordlist)
-    PhraseNoia.random_replace = args.numreplacements
+    phrasegen                = PhraseNoia(list_file=args.wordlist, entropy_source=args.entropy_source)
+    phrasegen.random_replace = args.numreplacements
+    phrasegen.check_entropy  = args.checkentropy
     print(phrasegen.gen(args.numwords))
     return 0
 

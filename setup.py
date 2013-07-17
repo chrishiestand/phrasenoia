@@ -3,7 +3,7 @@ from distutils.core import setup
 import os
 
 PROJECT = 'phrasenoia'
-VERSION = '0.2'
+VERSION = '0.3'
 URL     = 'https://github.com/chrishiestand/phrasenoia'
 AUTHOR  = 'Chris Hiestand'
 DESC    = "passphrase generator based on diceware"
